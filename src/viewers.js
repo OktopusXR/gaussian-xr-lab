@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { SplatMesh } from '@sparkjsdev/spark';
 
 export function createAssetViewer(scene){
  let current=null;
- function clear(){if(current){scene.remove(current);current=null;}}
+ function clear(){if(current){current.userData.video?.pause();scene.remove(current);current.traverse?.(o=>{if(o.isMesh){o.geometry?.dispose?.();o.material?.dispose?.();}});current.dispose?.();current=null;}}
  async function show(asset){
   clear();
   if(!asset)return;
@@ -24,7 +25,7 @@ export function createAssetViewer(scene){
    current=new THREE.Mesh(new THREE.SphereGeometry(60,64,40),new THREE.MeshBasicMaterial({map:texture,side:THREE.BackSide,depthWrite:false}));
    current.userData.video=video;scene.add(current);
   }else if(asset.type==='splat'){
-   throw new Error('Gaussian Splat renderer pending integration. Asset registered but not rendered.');
+   current=new SplatMesh({url});current.position.set(0,0,0);scene.add(current);
   }else throw new Error('Unsupported asset type: '+asset.type);
  }
  return {show,clear:()=>{current?.userData.video?.pause();clear();}};
