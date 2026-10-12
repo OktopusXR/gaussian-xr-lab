@@ -24,6 +24,8 @@ jobs:
         run: |
           gdown 13MChbPfCHqbhYhf8NAulP9y8eiUX0r6c -O /tmp/forest360.mp4
           test -s /tmp/forest360.mp4
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - name: Extract equirectangular frame
         run: |
           ffmpeg -hide_banner -loglevel error -y -ss 0.5 -i /tmp/forest360.mp4 -frames:v 1 -vf scale=2048:1024 /tmp/forest360.jpg
