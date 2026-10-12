@@ -1,0 +1,39 @@
+name: Reconstruct forest depth splats
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/depth360_to_splats.py'
+      - '.github/workflows/reconstruct-forest.yml'
+permissions:
+  contents: read
+jobs:
+  reconstruct:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install depth model and video dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "numpy<2" pillow opencv-python-headless torch torchvision "transformers>=4.45,<5" scipy gdown
+      - name: Download source 360 video
+        run: |
+          gdown --id 13MChbPfCHqbhYhf8NAulP9y8eiUX0r6c -O /tmp/forest360.mp4
+          test -s /tmp/forest360.mp4
+      - name: Extract equirectangular frame
+        run: |
+          ffmpeg -hide_banner -loglevel error -y -ss 0.5 -i /tmp/forest360.mp4 -frames:v 1 -vf scale=2048:1024 /tmp/forest360.jpg
+      - name: Estimate depth and reconstruct splats
+        run: |
+          mkdir -p output
+          python tools/depth360_to_splats.py /tmp/forest360.jpg output/bosque_depth_3dgs.ply
+      - name: Upload reconstruction artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bosque-depth-3dgs
+          path: output/bosque_depth_3dgs.ply
+          if-no-files-found: error
