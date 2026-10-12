@@ -53,8 +53,9 @@ async function enter(mode){
   try{
     const session=await navigator.xr.requestSession(mode,{optionalFeatures:['local-floor','bounded-floor','hand-tracking','layers']});
     activeSession=session;
-    session.addEventListener('end',()=>{activeSession=null;exit.disabled=true;status.textContent='Sesión XR finalizada.';});
+    session.addEventListener('end',()=>{activeSession=null;scene.background=new THREE.Color(0x080c14);exit.disabled=true;status.textContent='Sesión XR finalizada.';});
     await renderer.xr.setSession(session);
+    scene.background = mode==='immersive-ar' ? null : new THREE.Color(0x080c14);
     exit.disabled=false;
     status.textContent=mode==='immersive-ar'?'MR activa':'VR activa';
   }catch(e){status.textContent='No se pudo iniciar XR: '+e.message;console.error(e);}
