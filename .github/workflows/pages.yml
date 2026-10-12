@@ -27,7 +27,7 @@ jobs:
         run: |
           python -m pip install --quiet gdown
           mkdir -p assets/videos360
-          gdown --id 13MChbPfCHqbhYhf8NAulP9y8eiUX0r6c -O /tmp/bosque_source.mp4
+          gdown 13MChbPfCHqbhYhf8NAulP9y8eiUX0r6c -O /tmp/bosque_source.mp4
           if [ -s /tmp/bosque_source.mp4 ]; then
             ffmpeg -hide_banner -loglevel error -y -i /tmp/bosque_source.mp4 -vf scale=2880:1440 -c:v libx264 -preset veryfast -crf 24 -pix_fmt yuv420p -movflags +faststart -an assets/videos360/bosque_webxr.mp4
           fi
