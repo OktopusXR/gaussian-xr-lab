@@ -27,7 +27,9 @@ loadManifest().then(manifest=>{
    selector.add(option);
   }
  }
-}).catch(e=>console.warn('Manifest unavailable',e));
+  const forest=[...selector.options].find(o=>o.text.includes('Bosque 3D'));
+  if(forest){selector.value=forest.value;selector.dispatchEvent(new Event('change'));}
+}).catch(e=>{console.warn('Manifest unavailable',e);status.textContent='Error al cargar catálogo: '+e.message;});
 selector.onchange=async()=>{
  const demo=scene.getObjectByName('demo');
  if(!selector.value){viewer.clear();if(demo)demo.visible=true;return;}
@@ -39,26 +41,33 @@ selector.onchange=async()=>{
 const status=document.getElementById('status');
 const vr=document.getElementById('vr'),mr=document.getElementById('mr'),exit=document.getElementById('exit');
 let activeSession=null;
-const xrSupported=!!navigator.xr;
+const xrSupported=!!navigator.xr && window.isSecureContext;
+vr.onclick=()=>enter('immersive-vr');
+mr.onclick=()=>enter('immersive-ar');
+vr.disabled=!xrSupported;
+mr.disabled=!xrSupported;
+status.textContent=xrSupported
+ ? 'Meta Quest: pulsa Entrar en VR o Entrar en MR. Si no inicia, aparecerá el motivo aquí.'
+ : 'WebXR no disponible. Abre esta URL HTTPS en el navegador Meta Quest (no dentro de una vista previa).';
 if(xrSupported){
-  for(const [mode,button] of [['immersive-vr',vr],['immersive-ar',mr]]){
-    try {button.disabled=!(await navigator.xr.isSessionSupported(mode));}
-    catch(e){console.warn(mode,e);}
-    button.onclick=()=>enter(mode);
-  }
+ for(const [mode,button] of [['immersive-vr',vr],['immersive-ar',mr]]){
+  navigator.xr.isSessionSupported(mode).then(supported=>{
+   if(!supported){button.disabled=true;button.title=mode+' no disponible en este navegador';}
+  }).catch(e=>console.warn('XR support check',mode,e));
+ }
 }
-status.textContent=xrSupported?'WebXR detectado; selecciona un modo compatible.':'Vista 3D disponible. WebXR no detectado.';
 async function enter(mode){
   if(activeSession)return;
   try{
-    const session=await navigator.xr.requestSession(mode,{optionalFeatures:['local-floor','bounded-floor','hand-tracking','layers']});
+    status.textContent='Solicitando sesión '+mode+'…';
+    const session=await navigator.xr.requestSession(mode,{optionalFeatures:['local-floor','hand-tracking']});
     activeSession=session;
     session.addEventListener('end',()=>{activeSession=null;scene.background=new THREE.Color(0x080c14);exit.disabled=true;status.textContent='Sesión XR finalizada.';});
     await renderer.xr.setSession(session);
     scene.background = mode==='immersive-ar' ? null : new THREE.Color(0x080c14);
     exit.disabled=false;
     status.textContent=mode==='immersive-ar'?'MR activa':'VR activa';
-  }catch(e){status.textContent='No se pudo iniciar XR: '+e.message;console.error(e);}
+  }catch(e){status.textContent='No se pudo iniciar '+mode+': '+e.name+' — '+e.message;console.error(e);}
 }
 exit.onclick=()=>activeSession?.end();
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
