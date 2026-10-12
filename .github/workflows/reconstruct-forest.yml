@@ -22,7 +22,7 @@ jobs:
           python -m pip install "numpy<2" pillow opencv-python-headless torch torchvision "transformers>=4.45,<5" scipy gdown
       - name: Download source 360 video
         run: |
-          gdown --id 13MChbPfCHqbhYhf8NAulP9y8eiUX0r6c -O /tmp/forest360.mp4
+          gdown 13MChbPfCHqbhYhf8NAulP9y8eiUX0r6c -O /tmp/forest360.mp4
           test -s /tmp/forest360.mp4
       - name: Extract equirectangular frame
         run: |
