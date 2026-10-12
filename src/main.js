@@ -14,7 +14,18 @@ scene.background = new THREE.Color(0x080c14);
 const camera = new THREE.PerspectiveCamera(70,innerWidth/innerHeight,0.05,500);
 camera.position.set(0,1.6,3);
 createDemoScene(scene);
+const floor=scene.children.find(o=>o.isGridHelper);if(floor)floor.visible=false;
 const viewer=createAssetViewer(scene);
+let forestReady=false;
+let forestAsset=null;
+const rig=new THREE.Group();scene.add(rig);
+const hudCanvas=document.createElement('canvas');hudCanvas.width=1024;hudCanvas.height=256;
+const hudCtx=hudCanvas.getContext('2d');
+const hudTexture=new THREE.CanvasTexture(hudCanvas);
+const hud=new THREE.Mesh(new THREE.PlaneGeometry(1.6,.4),new THREE.MeshBasicMaterial({map:hudTexture,transparent:true,depthTest:false}));
+hud.position.set(0,-.35,-1.7);hud.renderOrder=1000;rig.add(hud);
+function setHud(message){hudCtx.clearRect(0,0,1024,256);hudCtx.fillStyle='rgba(5,10,17,.7)';hudCtx.fillRect(0,0,1024,256);hudCtx.fillStyle='#f0f6ff';hudCtx.textAlign='center';hudCtx.font='42px sans-serif';hudCtx.fillText(message.slice(0,48),512,145);hudTexture.needsUpdate=true;}
+setHud('GAUSSIAN XR LAB · BOSQUE');
 const selector=document.createElement('select');
 selector.setAttribute('aria-label','Seleccionar asset');
 selector.style.cssText='display:block;max-width:100%;padding:8px;margin-top:8px;background:#263b5c;color:white;border:1px solid #8296b8;border-radius:6px';
@@ -28,14 +39,14 @@ loadManifest().then(manifest=>{
   }
  }
   const forest=[...selector.options].find(o=>o.text.includes('Bosque 3D'));
-  if(forest){selector.value=forest.value;selector.dispatchEvent(new Event('change'));}
+  if(forest){forestAsset=JSON.parse(forest.value);selector.value=forest.value;selector.dispatchEvent(new Event('change'));}
 }).catch(e=>{console.warn('Manifest unavailable',e);status.textContent='Error al cargar catálogo: '+e.message;});
 selector.onchange=async()=>{
  const demo=scene.getObjectByName('demo');
  if(!selector.value){viewer.clear();if(demo)demo.visible=true;return;}
  if(demo)demo.visible=false;
- try{await viewer.show(JSON.parse(selector.value));status.textContent='Asset cargado.';}
- catch(e){status.textContent='Error de asset: '+e.message;console.error(e);}
+ try{await viewer.show(JSON.parse(selector.value));forestReady=true;status.textContent='Bosque cargado. Entrar en VR para explorar.';setHud('BOSQUE · MUEVE LA CABEZA PARA EXPLORAR');}
+ catch(e){forestReady=false;status.textContent='Error de asset: '+e.message;setHud('ERROR AL CARGAR BOSQUE');console.error(e);}
 };
 
 const status=document.getElementById('status');
@@ -60,15 +71,18 @@ async function enter(mode){
   if(activeSession)return;
   try{
     status.textContent='Solicitando sesión '+mode+'…';
+    setHud('INICIANDO EXPERIENCIA');
     const session=await navigator.xr.requestSession(mode,{optionalFeatures:['local-floor','hand-tracking']});
     activeSession=session;
-    session.addEventListener('end',()=>{activeSession=null;scene.background=new THREE.Color(0x080c14);exit.disabled=true;status.textContent='Sesión XR finalizada.';});
+    session.addEventListener('end',()=>{activeSession=null;scene.background=new THREE.Color(0x080c14);exit.disabled=true;document.getElementById('ui').style.display='block';status.textContent='Sesión XR finalizada.';});
     await renderer.xr.setSession(session);
     scene.background = mode==='immersive-ar' ? null : new THREE.Color(0x080c14);
     exit.disabled=false;
+    setHud(forestReady?'BOSQUE · EXPLORA EN 360°':'CARGANDO ESCENA');
+    document.getElementById('ui').style.display='none';
     status.textContent=mode==='immersive-ar'?'MR activa':'VR activa';
   }catch(e){status.textContent='No se pudo iniciar '+mode+': '+e.name+' — '+e.message;console.error(e);}
 }
 exit.onclick=()=>activeSession?.end();
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
-renderer.setAnimationLoop((time)=>{scene.getObjectByName('demo')?.rotation.set(time*.00013,time*.00023,0);renderer.render(scene,camera);});
+renderer.setAnimationLoop((time)=>{scene.getObjectByName('demo')?.rotation.set(time*.00013,time*.00023,0);rig.position.copy(renderer.xr.isPresenting?renderer.xr.getCamera().position:camera.position);renderer.render(scene,camera);});
