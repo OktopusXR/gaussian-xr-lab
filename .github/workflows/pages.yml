@@ -22,6 +22,15 @@ jobs:
         with:
           node-version: '22'
       - run: npm install
+      - name: Fetch optional forest 360 asset from Google Drive
+        continue-on-error: true
+        run: |
+          python -m pip install --quiet gdown
+          mkdir -p assets/videos360
+          gdown --id 13MChbPfCHqbhYhf8NAulP9y8eiUX0r6c -O assets/videos360/bosque_webxr.mp4
+      - name: Register forest asset if downloaded
+        run: |
+          node -e "const fs=require('fs');const p='assets/videos360/bosque_webxr.mp4';if(fs.existsSync(p)&&fs.statSync(p).size>100000){const m=JSON.parse(fs.readFileSync('assets/manifest.json'));m.videos360=[{id:'bosque',label:'Bosque 360',path:'assets/videos360/bosque_webxr.mp4'}];fs.writeFileSync('assets/manifest.json',JSON.stringify(m,null,2));}else{console.log('Drive download unavailable; skipping forest asset.');}"
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
